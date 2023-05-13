@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+import os
+import requests
+import subprocess
+
+
+# Get the directory of the script.
+script_directory = os.path.dirname(os.path.abspath(__file__))
+
+# Set the API text file path.
+api_key_file_path = os.path.join(script_directory, "api_key.txt")
+
+
+def read_api_key():
+    with open(api_key_file_path, "r") as file:
+        api_key = file.read().strip()
+    return api_key
+
+
+def get_unix_fortune():
+    try:
+        output = subprocess.check_output(
+            ["fortune"],
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        return "UNIX: " + output.strip()
+    except subprocess.CalledProcessError as e:
+        return None
+
+
+def get_openai_fortune():
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {read_api_key()}"
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Please provide a fortune:"}
+        ]
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    response_data = response.json()
+
+    if "choices" in response_data:
+        fortune = response_data["choices"][0]["message"]["content"]
+        return "OpenAI: " + fortune
+    else:
+        return get_unix_fortune() or "Oops! Failed to generate a fortune."
+
+
+def main():
+    fortune = get_openai_fortune()
+    print(fortune)
+
+
+if __name__ == "__main__":
+    main()
